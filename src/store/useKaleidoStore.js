@@ -8,14 +8,14 @@ function randomPalette(size=5){
   const pals = [
     ["#ff4d6d","#ff9e00","#70e000","#38a3a5","#4361ee"],
     ["#ff6b6b","#ffd93d","#6bcb77","#4d96ff","#845ec2"],
-    ["#ff4d6d", "#ff9e00", "#70e000", "#38a3a5", "#4361ee"],
+    ["#ff4d6d","#ff9e00","#70e000","#38a3a5","#4361ee"],
     ["#12c2e9","#c471ed","#f64f59","#ffd166","#06d6a0"],
   ];
   if (Math.random() < 0.5) return pals[randInt(0,pals.length)];
   const arr=[]; const h = randInt(0,360);
   for(let i=0;i<size;i++){
     const s = rand(0.65,0.95), v = rand(0.75,1);
-    const hh = (h + i* (360/size))%360;
+    const hh = (h + i*(360/size))%360;
     const c=v*s, x=c*(1-Math.abs((hh/60)%2-1)), m=v-c;
     const idx=Math.floor(hh/60);
     let [r,g,b]=[[c,x,0],[x,c,0],[0,c,x],[0,x,c],[x,0,c],[c,0,x]][idx] || [c,0,x];
@@ -33,12 +33,28 @@ export const useKaleidoStore = create((set, get) => ({
   glow: 0.4,
   bg: "#0a0b10",
 
-  // message
-  message: "You're amazing ✨",
+  // --- rotating messages (NEW) ---
+  messages: ["Hiiiii 👋", "Happy Birthday 💙", "Your Kaleidoscope 🎁"],
+  messageIndex: 0,
   messageVisible: true,
+  cycleMessages: true,         // auto-rotate on/off
+  messageInterval: 5000,       // ms between switches
+
   showMessage: () => set({ messageVisible: true }),
   hideMessage: () => set({ messageVisible: false }),
   toggleMessage: () => set({ messageVisible: !get().messageVisible }),
+  nextMessage: () => {
+    const { messages, messageIndex } = get();
+    if (!messages.length) return;
+    set({ messageIndex: (messageIndex + 1) % messages.length });
+  },
+  setMessageAt: (i, text) => {
+    const arr = [...get().messages];
+    arr[i] = text;
+    set({ messages: arr });
+  },
+  setCycleMessages: (on) => set({ cycleMessages: !!on }),
+  setMessageInterval: (ms) => set({ messageInterval: Math.max(1000, +ms || 5000) }),
 
   // style preset
   styleMode: "mandala", // "mandala" | "mosaic" | "rosette" | "stained" | "photo" | "floral"

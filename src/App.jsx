@@ -6,8 +6,17 @@ import { useKaleidoStore } from "./store/useKaleidoStore";
 import "./index.css";
 
 export default function App() {
-  const { message, messageVisible } = useKaleidoStore();
+  // message rotation bits from the store
+  const {
+    messages,
+    messageIndex,
+    messageVisible,
+    cycleMessages,
+    messageInterval,
+    nextMessage,
+  } = useKaleidoStore();
 
+  // -- mobile / drawer logic --
   const getIsMobile = () =>
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 900px)").matches;
@@ -25,7 +34,7 @@ export default function App() {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  // Lock scroll behind mobile drawer
+  // lock scroll behind mobile drawer
   useEffect(() => {
     if (isMobile && panelOpen) {
       const prev = document.body.style.overflow;
@@ -42,6 +51,15 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isMobile, panelOpen]);
+
+  // rotate messages automatically
+  useEffect(() => {
+    if (!cycleMessages || messages.length < 2) return;
+    const id = setInterval(nextMessage, Math.max(1000, messageInterval));
+    return () => clearInterval(id);
+  }, [cycleMessages, messageInterval, messages.length, nextMessage]);
+
+  const activeMessage = messages?.[messageIndex] ?? "";
 
   return (
     <div className={`app ${panelOpen ? "panel-open" : "panel-closed"}`}>
@@ -61,7 +79,7 @@ export default function App() {
           </button>
         )}
 
-        {/* Scrim only on mobile when open */}
+        {/* Scrim only on mobile when open (tap to close) */}
         {isMobile && panelOpen && (
           <div
             className="panel-scrim"
@@ -73,8 +91,9 @@ export default function App() {
 
         <Kaleidoscope />
         <FloatingShapes count={18} />
+
         <div className={`msg ${messageVisible ? "is-visible" : ""}`}>
-          {message}
+          {activeMessage}
         </div>
       </div>
     </div>

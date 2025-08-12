@@ -3,10 +3,24 @@ import { useKaleidoStore } from "../store/useKaleidoStore";
 
 export default function Controls({ onClose }) {
   const {
-    palette, segments, speed, glow, bg, message, messageVisible,
-    textureType, set, setTexture, clearTexture,
-    audioMode, audioSensitivity, setAudio, stopAudio, randomize,
-    gyroEnabled, styleMode
+    // visuals
+    palette, segments, speed, glow, bg, styleMode,
+    set,
+
+    // message rotator (NEW)
+    messages, setMessageAt,
+    messageVisible, toggleMessage,
+    cycleMessages, setCycleMessages,
+    messageInterval, setMessageInterval,
+
+    // texture
+    textureType, setTexture, clearTexture,
+
+    // audio
+    audioMode, audioSensitivity, setAudio, stopAudio,
+
+    // misc
+    randomize, gyroEnabled
   } = useKaleidoStore();
 
   const panelRef = useRef(null);
@@ -17,19 +31,14 @@ export default function Controls({ onClose }) {
   const [showScrollHint, setShowScrollHint] = useState(true);
   const [atBottom, setAtBottom] = useState(false);
 
+  // scroll hint logic
   useEffect(() => {
     const el = panelRef.current;
     if (!el) return;
-
     const onScroll = () => {
       const y = el.scrollTop;
       const max = el.scrollHeight - el.clientHeight;
-
-      // hide hint after a small scroll or when close to bottom
-      if (y > 120 || y > max - 80) setShowScrollHint(false);
-      else setShowScrollHint(true);
-
-      // track if near bottom for toggle
+      setShowScrollHint(!(y > 120 || y > max - 80));
       setAtBottom(y >= max - 24);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -40,19 +49,17 @@ export default function Controls({ onClose }) {
   const handleScrollHintClick = () => {
     const el = panelRef.current;
     if (!el) return;
-    if (atBottom) {
-      el.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    }
+    el.scrollTo({ top: atBottom ? 0 : el.scrollHeight, behavior: "smooth" });
   };
 
+  // UI handlers
   const updateColor = (idx, val) => {
     const next = [...palette]; next[idx] = val; set({ palette: next });
   };
 
   const saveImage = () => {
     const c = document.querySelector(".k-wrap canvas");
+    if (!c) return;
     const link = document.createElement("a");
     link.download = "kaleidoscope.png";
     link.href = c.toDataURL("image/png");
@@ -65,19 +72,20 @@ export default function Controls({ onClose }) {
   const toggleCameraMode = () => { textureType === "camera" ? clearTexture() : setTexture(null, "camera"); };
   const toggleMicMode = async () => { audioMode === "mic" ? stopAudio() : setAudio("mic", null); };
   const handleAudioFile = (file) => { if (!file) return; setAudio("file", URL.createObjectURL(file)); };
+
   const toggleGyro = async () => {
     const anyDO = window.DeviceOrientationEvent;
     if (anyDO && typeof anyDO.requestPermission === "function") {
-      try { const res = await anyDO.requestPermission(); if (res !== "granted") return alert("Motion permission was denied."); }
-      catch { return alert("Motion permission request failed."); }
+      try {
+        const res = await anyDO.requestPermission();
+        if (res !== "granted") { alert("Motion permission was denied."); return; }
+      } catch { alert("Motion permission request failed."); return; }
     }
     useKaleidoStore.getState().set({ gyroEnabled: !gyroEnabled });
   };
-  const toggleMessage = () => useKaleidoStore.getState().set({ messageVisible: !messageVisible });
 
   return (
     <div ref={panelRef} className="panel">
-      {/* optional close button (mobile) */}
       {onClose && (
         <button className="close-btn" aria-label="Close controls" onClick={onClose}>✕</button>
       )}
@@ -112,12 +120,48 @@ export default function Controls({ onClose }) {
         ))}
       </div>
 
-      <label>Message</label>
-      <input value={message} onChange={(e)=>set({message: e.target.value})} />
-      <button onClick={toggleMessage}>{messageVisible ? "Hide" : "Show"} Message</button>
-
+      {/* --- Rotating messages (3 lines) --- */}
       <hr style={{borderColor:"#222"}} />
+      <strong>Messages (auto-rotate)</strong>
 
+      {[0,1,2].map(i => (
+        <input
+          key={i}
+          type="text"
+          value={messages[i] ?? ""}
+          onChange={(e)=>setMessageAt(i, e.target.value)}
+          placeholder={`Message ${i+1}`}
+        />
+      ))}
+
+      <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <button onClick={toggleMessage}>{messageVisible ? "Hide" : "Show"} Message</button>
+
+        <label style={{ fontSize: 12 }}>
+          <input
+            type="checkbox"
+            checked={cycleMessages}
+            onChange={(e)=>setCycleMessages(e.target.checked)}
+            style={{ marginRight: 6 }}
+          />
+          Auto-rotate
+        </label>
+
+        <label style={{ fontSize: 12 }}>
+          Interval (sec):{" "}
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={Math.round(messageInterval/1000)}
+            onChange={(e)=>setMessageInterval((+e.target.value || 5)*1000)}
+            style={{ width: 70, marginLeft: 6 }}
+          />
+        </label>
+      </div>
+
+      {/* --- Texture source --- */}
+      <hr style={{borderColor:"#222"}} />
       <strong>Texture Source</strong>
       <div className="row" style={{gap:8, flexWrap:"wrap"}}>
         <button onClick={activatePetalMode}>Use Petal</button>
@@ -130,11 +174,10 @@ export default function Controls({ onClose }) {
 
         <button onClick={toggleCameraMode}>{textureType === "camera" ? "Stop Camera" : "Live Camera"}</button>
       </div>
-
       <em style={{color:"#8f93a6", fontSize:12}}>Tip: Camera requires HTTPS (or localhost).</em>
 
+      {/* --- Music reactive --- */}
       <hr style={{borderColor:"#222"}} />
-
       <strong>Music-Reactive</strong>
       <div className="row" style={{gap:8, flexWrap:"wrap"}}>
         <button onClick={toggleMicMode}>{audioMode === "mic" ? "Stop Mic" : "Use Mic"}</button>
@@ -148,8 +191,8 @@ export default function Controls({ onClose }) {
       <label>Sensitivity: {audioSensitivity.toFixed(2)}</label>
       <input type="range" min="0.2" max="2" step="0.05" value={audioSensitivity} onChange={(e)=>set({audioSensitivity: +e.target.value})} />
 
+      {/* --- Footer actions --- */}
       <hr style={{borderColor:"#222"}} />
-
       <div className="row" style={{gap:8, flexWrap:"wrap"}}>
         <button onClick={randomize}>🎲 Surprise Me</button>
         <button onClick={toggleGyro}>{gyroEnabled ? "Disable Tilt" : "Enable Tilt"}</button>
@@ -159,6 +202,29 @@ export default function Controls({ onClose }) {
       <em style={{color:"#8f93a6", fontSize:12}}>
         Tip: Tilt needs motion permission on iOS and works best on HTTPS.
       </em>
+
+      {/* Footer */}
+      <div
+        className="control-footer"
+        style={{
+          marginTop: "auto",
+          padding: "12px 8px",
+          textAlign: "center",
+          fontSize: 12,
+          color: "#8f93a6",
+          borderTop: "1px solid rgba(255,255,255,0.08)"
+        }}
+      >
+        Engineered with heart by{" "}
+        <a
+          href="https://www.alexnjugi.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#ff6b6b", textDecoration: "none", fontWeight: 500 }}
+        >
+          Alex Njugi
+        </a>
+      </div>
 
       {/* --- Mobile scroll hint button --- */}
       <button
