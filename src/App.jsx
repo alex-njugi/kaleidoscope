@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Kaleidoscope from "./components/Kaleidoscope";
 import Controls from "./components/Controls";
 import FloatingShapes from "./components/FloatingShapes";
@@ -6,7 +6,6 @@ import { useKaleidoStore } from "./store/useKaleidoStore";
 import "./index.css";
 
 export default function App() {
-  // message rotation bits from the store
   const {
     messages,
     messageIndex,
@@ -14,9 +13,10 @@ export default function App() {
     cycleMessages,
     messageInterval,
     nextMessage,
+    randomize,                // ← use Surprise Me from the store
   } = useKaleidoStore();
 
-  // -- mobile / drawer logic --
+  // --- mobile / drawer state ---
   const getIsMobile = () =>
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 900px)").matches;
@@ -43,7 +43,7 @@ export default function App() {
     }
   }, [isMobile, panelOpen]);
 
-  // ESC to close on mobile
+  // ESC to close drawer (mobile)
   useEffect(() => {
     const onKey = (e) => {
       if (isMobile && panelOpen && e.key === "Escape") setPanelOpen(false);
@@ -52,7 +52,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isMobile, panelOpen]);
 
-  // rotate messages automatically
+  // auto-rotate messages
   useEffect(() => {
     if (!cycleMessages || messages.length < 2) return;
     const id = setInterval(nextMessage, Math.max(1000, messageInterval));
@@ -61,29 +61,63 @@ export default function App() {
 
   const activeMessage = messages?.[messageIndex] ?? "";
 
+  // --- Single-tap to Surprise Me (with double-tap guard) ---
+  const lastTap = useRef(0);
+  const tapTimer = useRef(null);
+
+  const handleStageTap = () => {
+    // ignore taps when the drawer is open on mobile
+    if (isMobile && panelOpen) return;
+
+    const now = Date.now();
+    const delta = now - lastTap.current;
+    lastTap.current = now;
+
+    // double-tap? cancel single-tap action
+    if (delta < 300) {
+      if (tapTimer.current) clearTimeout(tapTimer.current);
+      tapTimer.current = null;
+      return;
+    }
+
+    // single-tap → randomize after a brief window (so we can detect double-tap)
+    tapTimer.current = setTimeout(() => {
+      randomize();
+    }, 280);
+  };
+
   return (
     <div className={`app ${panelOpen ? "panel-open" : "panel-closed"}`}>
       <aside className="panel-wrap" aria-hidden={isMobile ? !panelOpen : false}>
-        {(!isMobile || panelOpen) && <Controls onClose={() => setPanelOpen(false)} />}
+        {(!isMobile || panelOpen) && (
+          <Controls onClose={() => setPanelOpen(false)} />
+        )}
       </aside>
 
-      <div className="stage">
-        {/* Hamburger shows whenever the panel is closed (desktop + mobile) */}
+      {/* Make the whole stage tappable */}
+      <div className="stage" onClick={handleStageTap}>
+        {/* Hamburger (stop click bubbling so it doesn't trigger randomize) */}
         {!panelOpen && (
           <button
             className="open-btn"
             aria-label="Open controls"
-            onClick={() => setPanelOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setPanelOpen(true);
+            }}
           >
             ☰
           </button>
         )}
 
-        {/* Scrim only on mobile when open (tap to close) */}
+        {/* Scrim (mobile): close on tap, don't bubble to stage */}
         {isMobile && panelOpen && (
           <div
             className="panel-scrim"
-            onClick={() => setPanelOpen(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setPanelOpen(false);
+            }}
             aria-hidden="true"
             role="presentation"
           />

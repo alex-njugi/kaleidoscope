@@ -307,3 +307,4 @@ body{
   /* Scrim not needed on desktop */
   .panel-scrim{ display: none !important; }
 }
+.stage { cursor: pointer; }

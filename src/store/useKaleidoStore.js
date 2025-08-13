@@ -10,6 +10,11 @@ function randomPalette(size=5){
     ["#ff6b6b","#ffd93d","#6bcb77","#4d96ff","#845ec2"],
     ["#ff4d6d","#ff9e00","#70e000","#38a3a5","#4361ee"],
     ["#12c2e9","#c471ed","#f64f59","#ffd166","#06d6a0"],
+    ["#f72585","#b5179e","#7209b7","#3a0ca3","#4cc9f0"], 
+    ["#ff477e","#ff8fab","#ffb347","#06d6a0","#118ab2"],
+    ["#ff5d8f","#ff7f51","#fcbf49","#80ed99","#38a3a5"], 
+    ["#ff595e","#ffca3a","#8ac926","#1982c4","#6a4c93"], 
+    ["#ef476f","#ffd166","#06d6a0","#118ab2","#073b4c"],
   ];
   if (Math.random() < 0.5) return pals[randInt(0,pals.length)];
   const arr=[]; const h = randInt(0,360);
@@ -92,7 +97,7 @@ export const useKaleidoStore = create((set, get) => ({
   },
 
   randomize: () => {
-    const segs = randInt(6, 16);
+    const segs = randInt(3, 16);
     const spd = parseFloat(rand(0.2, 1.2).toFixed(2));
     const glw = parseFloat(rand(0.2, 0.8).toFixed(2));
     const bg = `#${hex(randInt(5,20))}${hex(randInt(5,20))}${hex(randInt(8,26))}`;
