@@ -57,7 +57,7 @@ export const useKaleidoStore = create((set, get) => ({
   setMessageInterval: (ms) => set({ messageInterval: Math.max(1000, +ms || 5000) }),
 
   // style preset
-  styleMode: "mandala", // "mandala" | "mosaic" | "rosette" | "stained" | "photo" | "floral"
+  styleMode: "mosaic", // "mandala" | "mosaic" | "rosette" | "stained" | "photo" | "floral"
 
   // textures
   textureType: "none", // "none" | "image" | "video" | "camera"
